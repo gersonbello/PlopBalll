@@ -29,6 +29,7 @@ public class Player : MonoBehaviour
         rig.constraints = RigidbodyConstraints2D.FreezePositionX;
 
         GameController gc = FindObjectOfType<GameController>();
+        gc.CancelInvoke();
         gc.InvokeRepeating("AdPoints", 1, 1);
         gc.InvokeRepeating("LevelUp", gc.timeToAjust, gc.timeToAjust);
 
@@ -166,7 +167,7 @@ public class Player : MonoBehaviour
         {
             timeToRotate -= Time.deltaTime;
             rotateObject.transform.Rotate(rotateSpeed);
-            zSpeed += Time.deltaTime / timeToRotate;
+            //zSpeed += Time.deltaTime / timeToRotate;
             rotateSpeed.z = zSpeed;
             yield return null;
         }

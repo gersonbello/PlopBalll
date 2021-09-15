@@ -6,8 +6,9 @@ public class SkinsMananger : MonoBehaviour
     [SerializeField] Skin startSkin;
     [SerializeField] Transform GameParent;
     [SerializeField] Transform GroundParent;
+    [SerializeField] Spawner spawner;
 
-    private void Start()
+    private void OnEnable()
     {
         if (startSkin != null) SetSkin(startSkin);
     }

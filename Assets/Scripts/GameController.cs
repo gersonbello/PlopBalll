@@ -93,7 +93,7 @@ public class GameController : MonoBehaviour
             case 1:
                 break;
             default:
-                if (level > FindObjectOfType<Spawner>().obstacles.Length)
+                if (level > FindObjectOfType<Spawner>().obstacles.Count)
                 {
                     globalVelocity = globalVelocity >= maxVelocity ? maxVelocity : globalVelocity++;
                     Debug.Log("New Velocity: " + globalVelocity);

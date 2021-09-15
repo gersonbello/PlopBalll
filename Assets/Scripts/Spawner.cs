@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class Spawner : MonoBehaviour
 {
     public GameController gc;
-    public GameObject[] obstacles;
+    public List<GameObject> obstacles = new List<GameObject>();
     [SerializeField] int startObstaclesID = 2;
     [SerializeField] List<AutoMovement> amQueue = new List<AutoMovement>();
     
@@ -12,7 +12,7 @@ public class Spawner : MonoBehaviour
     public void SpawnObject()
     {
         int a = startObstaclesID + gc.level;
-        GameObject gO = Extentions.InstantiateFromQueue(obstacles[Random.Range(0, a > obstacles.Length ? obstacles.Length: a)], amQueue);
+        GameObject gO = Extentions.InstantiateFromQueue(obstacles[Random.Range(0, a > obstacles.Count ? obstacles.Count: a)], amQueue);
         gO.transform.position = new Vector3(transform.position.x, gO.transform.position.y, 0);
 
         float timeToNextSpawn = Random.Range(.25f, Mathf.Max(1f, 1.5f - gc.level / 10));
@@ -23,9 +23,10 @@ public class Spawner : MonoBehaviour
     public void SetEnemyQueue(List<GameObject> enemys)
     {
         amQueue.Clear();
+        obstacles.Clear();
         foreach(GameObject g in enemys)
         {
-            amQueue.Add(g.GetComponent<AutoMovement>());
+            obstacles.Add(g);
         }
     }
 
