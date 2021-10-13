@@ -33,24 +33,24 @@ public class Swipe_HUD : MonoBehaviour
             }
         }
 
-        for (int i = 0; i < pos.Length; i++)
-        {
-            if (scrollPos < pos[i] + (distance / 2) && (scrollPos > pos[i] - (distance / 2)))
-            {
-                Transform buttonOBJ = content.GetChild(i);
-                buttonOBJ.localScale = Vector2.Lerp(buttonOBJ.localScale, new Vector2(1f, 1f), .1f);
+        //for (int i = 0; i < pos.Length; i++)
+        //{
+        //    if (scrollPos < pos[i] + (distance / 2) && (scrollPos > pos[i] - (distance / 2)))
+        //    {
+        //        Transform buttonOBJ = content.GetChild(i);
+        //        buttonOBJ.localScale = Vector2.Lerp(buttonOBJ.localScale, new Vector2(1f, 1f), .1f);
 
-                for (int a = 0; a < pos.Length; a++) 
-                {
-                    buttonOBJ = content.GetChild(a);
-                    if (a != i)
-                    {
-                        float distanceFromSelected = Mathf.Abs(selectedIndex - i);
-                        float newSize = 1f - distanceFromSelected * .25f;
-                        buttonOBJ.localScale = Vector2.Lerp(buttonOBJ.localScale, new Vector2(newSize, newSize), .1f);
-                    }
-                }
-            }
-        }
+        //        for (int a = 0; a < pos.Length; a++) 
+        //        {
+        //            buttonOBJ = content.GetChild(a);
+        //            if (a != i)
+        //            {
+        //                float distanceFromSelected = Mathf.Abs(a - i);
+        //                float newSize = 1f - distanceFromSelected * .25f;
+        //                buttonOBJ.localScale = Vector2.Lerp(buttonOBJ.localScale, new Vector2(newSize, newSize), .1f);
+        //            }
+        //        }
+        //    }
+        //}
     }
 }

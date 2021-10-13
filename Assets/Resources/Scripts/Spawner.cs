@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 
 public class Spawner : MonoBehaviour
 {
@@ -9,15 +10,16 @@ public class Spawner : MonoBehaviour
     [SerializeField] List<AutoMovement> amQueue = new List<AutoMovement>();
     
 
-    public void SpawnObject()
+    public IEnumerator SpawnObject(float time)
     {
+        yield return new WaitForSeconds(time);
         int a = startObstaclesID + gc.level;
         GameObject gO = Extentions.InstantiateFromQueue(obstacles[Random.Range(0, a > obstacles.Count ? obstacles.Count: a)], amQueue);
         gO.transform.position = new Vector3(transform.position.x, gO.transform.position.y, 0);
 
-        float timeToNextSpawn = Random.Range(.25f, Mathf.Max(1f, 1.5f - gc.level / 10));
+        float timeToNextSpawn = Random.Range(.25f, Mathf.Max(.5f, 1f - gc.level / 10));
 
-        Invoke("SpawnObject", timeToNextSpawn); // Garante spawn randomizado
+        StartCoroutine(SpawnObject(timeToNextSpawn)); // Garante spawn randomizado
     }
 
     public void SetEnemyQueue(List<GameObject> enemys)
@@ -30,9 +32,9 @@ public class Spawner : MonoBehaviour
         }
     }
 
-    private void OnEnable() { Invoke("SpawnObject", 3); }
+    private void OnEnable() { StartCoroutine(SpawnObject(3)); }
 
-    private void OnDisable() { CancelInvoke("SpawnObject"); }
+    private void OnDisable() { StopAllCoroutines(); }
 
 
 }

@@ -30,7 +30,6 @@ public class Player : MonoBehaviour
 
         GameController gc = FindObjectOfType<GameController>();
         gc.CancelInvoke();
-        gc.InvokeRepeating("AdPoints", 1, 1);
         gc.InvokeRepeating("LevelUp", gc.timeToAjust, gc.timeToAjust);
 
         bottomHitPos = Vector3.up * GetComponent<CircleCollider2D>().radius;
@@ -130,7 +129,6 @@ public class Player : MonoBehaviour
             GameController.globalVelocity = 0;
             GameController gc = FindObjectOfType<GameController>();
             gc.CancelInvoke();
-            gc.SaveGame();
             StartCoroutine(Death());
         }
     }
@@ -140,10 +138,10 @@ public class Player : MonoBehaviour
         Camera cam = FindObjectOfType<Camera>();
         cam.backgroundColor = camDeathColor;
         cam.gameObject.transform.position += Vector3.up * .5f;
-        StopCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
-        StartCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
 
         CameraBehaviour CB = cam.GetComponent<CameraBehaviour>();
+        StopCoroutine(CB.SetBlackCamera());
+        StartCoroutine(CB.SetBlackCamera());
         CB.StopCoroutine(CB.SetCameraPosition());
         CB.StartCoroutine(CB.SetCameraPosition());
 
@@ -167,7 +165,7 @@ public class Player : MonoBehaviour
         {
             timeToRotate -= Time.deltaTime;
             rotateObject.transform.Rotate(rotateSpeed);
-            //zSpeed += Time.deltaTime / timeToRotate;
+            zSpeed -= zSpeed / timeToRotate;
             rotateSpeed.z = zSpeed;
             yield return null;
         }

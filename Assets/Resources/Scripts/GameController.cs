@@ -5,13 +5,24 @@ using UnityEngine.Events;
 
 public class GameController : MonoBehaviour
 {
+    static GameController _gc;
+    public static GameController gc
+    {
+        get
+        {
+            if (_gc == null) _gc = FindObjectOfType<GameController>();
+            if (_gc == null) _gc = Instantiate(new GameObject()).AddComponent<GameController>();
+            return _gc;
+        }
+    }
 
     [SerializeField] float timeToAjust_ = 20;
     public float timeToAjust { get { return timeToAjust_; } }
 
     public int level;
-    [SerializeField] int points;
-    [SerializeField] int bestPoints;
+    public int points { get; private set; }
+    public int xp;
+    public int bestPoints { get; private set; }
     [SerializeField] TMPro.TextMeshProUGUI pointText;
     [SerializeField] TMPro.TextMeshProUGUI bestPointText;
     [SerializeField] UnityEvent deathEvents;
@@ -21,12 +32,14 @@ public class GameController : MonoBehaviour
     [SerializeField] int startVelocity;
     [SerializeField] int maxVelocity;
     public static int globalVelocity;
-    public static Queue<GameObject> entitiesToMoveQueue = new Queue<GameObject>();
+    public Queue<GameObject> entitiesToMoveQueue = new Queue<GameObject>();
     [SerializeField] private List<GameObject> entitiesToMove = new List<GameObject>();
     [SerializeField] private Queue<GameObject> entitiesToDestroy = new Queue<GameObject>();
+    public ScoreBeaviour scoreBeaviour { get; private set; }
 
     private void Start()
     {
+        scoreBeaviour = FindObjectOfType<ScoreBeaviour>();
         Application.targetFrameRate = 60;
         LoadGame();
         level = 0;
@@ -36,6 +49,7 @@ public class GameController : MonoBehaviour
     #region Move Entities
     private void FixedUpdate()
     {
+        if (Input.GetKeyDown(KeyCode.R)) ResetSaveGame();
         AddEntities();
         MoveEntity();
         DestroyEntities();
@@ -81,6 +95,7 @@ public class GameController : MonoBehaviour
 
     public void AdPoints()
     {
+        if(globalVelocity > 0)
         points++;
         pointText.text = points.ToString("D4");
     }
@@ -107,8 +122,10 @@ public class GameController : MonoBehaviour
         globalVelocity = startVelocity;
 
         bestPointText.text = "Best: " + bestPoints.ToString("D4");
-        pointText.text = points.ToString("D4");
+        scoreBeaviour.points = points;
+        scoreBeaviour.StartCoroutine(scoreBeaviour.UpdateScore());
         points = 0;
+        pointText.text = points.ToString("D4");
 
         deathEvents.Invoke();
         DestroyAllEntities();
@@ -118,6 +135,7 @@ public class GameController : MonoBehaviour
     public class SaveProfile
     {
         public int bestPoints;
+        public int xp;
     }
     public void SaveGame()
     {
@@ -126,6 +144,7 @@ public class GameController : MonoBehaviour
 
         SaveProfile saveProfile = new SaveProfile();
         saveProfile.bestPoints = bestPoints;
+        saveProfile.xp = xp;
 
         string saveString = JsonUtility.ToJson(saveProfile);
 
@@ -133,6 +152,21 @@ public class GameController : MonoBehaviour
 
         Debug.Log(saveString);
         Debug.Log(Application.persistentDataPath + "/saveFile.json");
+    }
+    public void ResetSaveGame()
+    {
+        SaveProfile saveProfile = new SaveProfile();
+        saveProfile.bestPoints = 0;
+        saveProfile.xp = 0;
+
+        string saveString = JsonUtility.ToJson(saveProfile);
+
+        File.WriteAllText(Application.persistentDataPath + "/saveFile.json", saveString);
+
+        Debug.Log(saveString);
+        Debug.Log(Application.persistentDataPath + "/saveFile.json");
+
+        LoadGame();
     }
     public void LoadGame()
     {
@@ -143,6 +177,7 @@ public class GameController : MonoBehaviour
 
         loadProfile = JsonUtility.FromJson<SaveProfile>(loadString);
         bestPoints = loadProfile.bestPoints;
+        xp = loadProfile.xp;
 
         bestPointText.text = "Best: " + bestPoints.ToString("D4");
         Debug.Log(loadProfile);
@@ -158,7 +193,7 @@ public static class Extentions
 
         foreach(AutoMovement a in q)
         {
-            if(am.objectTypeId == a.objectTypeId && !a.gameObject.active)
+            if(am.objectTypeId == a.objectTypeId && !a.gameObject.activeInHierarchy)
             {
                 a.gameObject.SetActive(true);
                 return a.gameObject;
