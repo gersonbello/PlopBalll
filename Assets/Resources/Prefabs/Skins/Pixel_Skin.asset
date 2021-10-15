@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f24bdc78d09786f4b9c4cc6536dec427, type: 3}
   m_Name: Pixel_Skin
   m_EditorClassIdentifier: 
+  skinName: Pixel Mode
+  startVelocity: 10
+  maxVelocity: 15
   playerSkin: {fileID: 8247784545001296555, guid: 43cacaa5cc84a444d84337ce3b5a6395, type: 3}
   groundSkin: {fileID: 3911313561068513203, guid: 0ee39fa886ab8ec4b8e40fe8285646f4, type: 3}
   enemysSkins:

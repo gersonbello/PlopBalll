@@ -10,8 +10,9 @@ public class SkinsMananger : MonoBehaviour
 
     private void OnEnable()
     {
-        if (startSkin != null) SetSkin(startSkin);
+        if (GameController.gc.equippedSkin != null) SetSkin(GameController.gc.equippedSkin);
     }
+
     public void SetSkin(Skin skinToSet)
     {
         Destroy(GroundParent.GetChild(0).gameObject);

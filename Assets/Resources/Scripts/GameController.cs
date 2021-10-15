@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -26,20 +27,30 @@ public class GameController : MonoBehaviour
     [SerializeField] TMPro.TextMeshProUGUI pointText;
     [SerializeField] TMPro.TextMeshProUGUI bestPointText;
     [SerializeField] UnityEvent deathEvents;
-    [SerializeField] int equippedSkin;
+    public Skin equippedSkin;
 
 
-    [SerializeField] int startVelocity;
-    [SerializeField] int maxVelocity;
+    [SerializeField] int startVelocity { get { return equippedSkin != null ? equippedSkin.startVelocity : 0; } }
+    [SerializeField] int maxVelocity { get { return equippedSkin != null ? equippedSkin.maxVelocity : 0; } }
     public static int globalVelocity;
     public Queue<GameObject> entitiesToMoveQueue = new Queue<GameObject>();
     [SerializeField] private List<GameObject> entitiesToMove = new List<GameObject>();
     [SerializeField] private Queue<GameObject> entitiesToDestroy = new Queue<GameObject>();
     public ScoreBeaviour scoreBeaviour { get; private set; }
+    public PointsIndicator_Behaviour pIBehaviour { get; private set; }
+    public SkinMenuBehaviour skinMenuBeaviour { get; private set; }
+    public List<Skin> gameSkins = new List<Skin>();
 
     private void Start()
     {
         scoreBeaviour = FindObjectOfType<ScoreBeaviour>();
+        pIBehaviour = FindObjectOfType<PointsIndicator_Behaviour>();
+
+        skinMenuBeaviour = FindObjectOfType<SkinMenuBehaviour>();
+        Object[] skinsToLoad = Resources.LoadAll("Prefabs/Skins" , typeof(Skin));
+        foreach (Object s in skinsToLoad) gameSkins.Add((Skin)s);
+        skinMenuBeaviour.skins = gameSkins;
+
         Application.targetFrameRate = 60;
         LoadGame();
         level = 0;
@@ -53,6 +64,10 @@ public class GameController : MonoBehaviour
         AddEntities();
         MoveEntity();
         DestroyEntities();
+    }
+
+    public void StartGame()
+    {
     }
 
     void AddEntities()
@@ -98,6 +113,15 @@ public class GameController : MonoBehaviour
         if(globalVelocity > 0)
         points++;
         pointText.text = points.ToString("D4");
+        pIBehaviour.AddIndicator(1, null);
+    }
+
+    public void AdPoints(int pointsToAdd, Color pointsTextColor)
+    {
+        if (globalVelocity > 0)
+            points += pointsToAdd;
+        pointText.text = points.ToString("D4");
+        pIBehaviour.AddIndicator(pointsToAdd, pointsTextColor);
     }
     public void LevelUp()
     {
@@ -108,11 +132,8 @@ public class GameController : MonoBehaviour
             case 1:
                 break;
             default:
-                if (level > FindObjectOfType<Spawner>().obstacles.Count)
-                {
-                    globalVelocity = globalVelocity >= maxVelocity ? maxVelocity : globalVelocity++;
+                    globalVelocity = globalVelocity >= maxVelocity ? maxVelocity : globalVelocity + 1;
                     Debug.Log("New Velocity: " + globalVelocity);
-                }
                 break;
         }
     }
@@ -187,13 +208,13 @@ public class GameController : MonoBehaviour
 
 public static class Extentions
 {
-    public static GameObject InstantiateFromQueue(GameObject entity, List<AutoMovement> q)
+    public static GameObject InstantiateFromQueue(this GameObject G, GameObject entity, List<AutoMovement> q)
     {
         AutoMovement am = entity.GetComponent<AutoMovement>();
 
         foreach(AutoMovement a in q)
         {
-            if(am.objectTypeId == a.objectTypeId && !a.gameObject.activeInHierarchy)
+            if(!a.gameObject.activeInHierarchy && am.objectTypeId == a.objectTypeId)
             {
                 a.gameObject.SetActive(true);
                 return a.gameObject;
@@ -201,6 +222,20 @@ public static class Extentions
         }
         GameObject g = Object.Instantiate(entity);
         q.Add(g.GetComponent<AutoMovement>());
+        return g;
+    }
+    public static GameObject InstantiateFromQueue(this GameObject G, GameObject entity, List<GameObject> q)
+    {
+        foreach (GameObject a in q)
+        {
+            if (!a.activeInHierarchy && entity.tag == a.tag)
+            {
+                a.gameObject.SetActive(true);
+                return a.gameObject;
+            }
+        }
+        GameObject g = Object.Instantiate(entity);
+        q.Add(g);
         return g;
     }
 }

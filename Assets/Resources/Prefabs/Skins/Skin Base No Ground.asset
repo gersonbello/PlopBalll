@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f24bdc78d09786f4b9c4cc6536dec427, type: 3}
-  m_Name: Skin Base
+  m_Name: Skin Base No Ground
   m_EditorClassIdentifier: 
-  playerSkin: {fileID: 8485097088669350351, guid: 582dcf47c214700479b373160fc7cabf, type: 3}
-  groundSkin: {fileID: 3911313561068513203, guid: 0ee39fa886ab8ec4b8e40fe8285646f4, type: 3}
-  groundHitEffect: {fileID: 4453225873443271086, guid: d50f8a8b5ba5685468eb551cad0e93db, type: 3}
+  skinName: No Ground Mode
+  startVelocity: 7
+  maxVelocity: 20
+  playerSkin: {fileID: 8485097088669350351, guid: bd61dc0f455b53a42bbe4eba5eca0862, type: 3}
+  groundSkin: {fileID: 3911313561068513203, guid: 25eb437c7db75cb4f9d4641a81eced52, type: 3}
   enemysSkins:
   - {fileID: 7900932466233346761, guid: 3185e58bb9f6d914c9896d24d6f8f4ba, type: 3}
-  - {fileID: 3937757661132805419, guid: b20ffca631941e74c8e9bb6901d8d7f2, type: 3}
   - {fileID: 5979530583908979343, guid: 7eac1992a24bb1a4f9d5db1054c1845c, type: 3}
   - {fileID: 1529299425944150103, guid: f9a59e029a58e3b45bccb554b3916c3c, type: 3}
   - {fileID: 1529299425944150103, guid: 416fc78d55f5a9a49939fcf4d9769f0d, type: 3}
-  - {fileID: 1529299425944150103, guid: 673dafb9854d0c04da2a7cf386abfd13, type: 3}

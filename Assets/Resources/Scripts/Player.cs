@@ -4,22 +4,22 @@ using System.Collections.Generic;
 
 public class Player : MonoBehaviour
 {
-    [SerializeField] bool GameOver;
-    [SerializeField] float jumpForce, airJumpForce, fallForce, fallJumpForce;
-    [SerializeField] ParticleSystem groundHitEffect;
-    [SerializeField] ParticleSystem groundSmashEffect;
-    [SerializeField] Color camGroundHitColor, camDeathColor;
-    [SerializeField] List<AutoMovement> amQueue = new List<AutoMovement>();
+    [SerializeField] protected bool GameOver;
+    [SerializeField] protected float jumpForce, airJumpForce, fallForce, fallJumpForce;
+    [SerializeField] protected ParticleSystem groundHitEffect;
+    [SerializeField] protected ParticleSystem groundSmashEffect;
+    [SerializeField] protected Color camGroundHitColor, camDeathColor;
+    [SerializeField] protected List<AutoMovement> amQueue = new List<AutoMovement>();
 
     [Header("Animation Config")]
-    [SerializeField] GameObject playerSkin;
-    [SerializeField] bool rotateAtContact;
+    [SerializeField] protected GameObject playerSkin;
+    [SerializeField] protected bool rotateAtContact;
 
-    Rigidbody2D rig;
+    protected Rigidbody2D rig;
 
-    Vector3 startPos, bottomHitPos;
+    protected Vector3 startPos, bottomHitPos;
 
-    bool onGround, jump, fallJump, forceFalling;
+    protected bool onGround, jump, fallJump, forceFalling;
 
     void OnEnable()
     {
@@ -33,6 +33,7 @@ public class Player : MonoBehaviour
         gc.InvokeRepeating("LevelUp", gc.timeToAjust, gc.timeToAjust);
 
         bottomHitPos = Vector3.up * GetComponent<CircleCollider2D>().radius;
+        GameController.gc.StartGame();
     }
 
     void Update() { Controls(); }
@@ -94,15 +95,17 @@ public class Player : MonoBehaviour
         StopCoroutine("RotateForTime");
         if (rotateAtContact) StartCoroutine(RotateForTime(playerSkin, new Vector3(0, 0, Random.Range(-1.5f, -1f)), 3));
 
-        if (coll.transform.CompareTag("ground") && !GameOver)
+        if ((coll.transform.CompareTag("ground") || coll.transform.CompareTag("static ground")) && !GameOver)
         {
-            if (groundHitEffect != null) Extentions.InstantiateFromQueue(groundHitEffect.gameObject, amQueue).transform.position = transform.position - bottomHitPos;
+            if (groundHitEffect != null) gameObject.InstantiateFromQueue(groundHitEffect.gameObject, amQueue).transform.position = transform.position - bottomHitPos;
             if (forceFalling)
             {
+                if(coll.transform.CompareTag("ground")) GameController.gc.AdPoints(5 + GameController.gc.level, Color.blue);
+                else GameController.gc.AdPoints(1 + GameController.gc.level, Color.yellow);
                 forceFalling = false;
                 ImpulseBall(fallJumpForce);
 
-                if (groundSmashEffect != null) Extentions.InstantiateFromQueue(groundSmashEffect.gameObject, amQueue).transform.position = transform.position;
+                if (groundSmashEffect != null) gameObject.InstantiateFromQueue(groundSmashEffect.gameObject, amQueue).transform.position = transform.position;
 
                 Camera cam = FindObjectOfType<Camera>();
                 cam.backgroundColor = camGroundHitColor;
@@ -116,6 +119,7 @@ public class Player : MonoBehaviour
             }
             else
             {
+                GameController.gc.AdPoints(1 + GameController.gc.level, Color.yellow);
                 ImpulseBall(jumpForce);
             }
             jump = false;
@@ -173,7 +177,7 @@ public class Player : MonoBehaviour
 
     private void OnCollisionExit2D(Collision2D coll)
     {
-        if (coll.transform.CompareTag("ground"))
+        if ((coll.transform.CompareTag("ground") || coll.transform.CompareTag("static ground")))
         {
             onGround = false;
             fallJump = false;

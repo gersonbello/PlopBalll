@@ -31,6 +31,5 @@ public class AutoMovement : MonoBehaviour
             transform.position = newPos;
             yield return null;
         }
-        GameController.gc.AdPoints();
     }
 }
