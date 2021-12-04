@@ -39,6 +39,8 @@ public class GameController : MonoBehaviour
     public ScoreBeaviour scoreBeaviour { get; private set; }
     public PointsIndicator_Behaviour pIBehaviour { get; private set; }
     public SkinMenuBehaviour skinMenuBeaviour { get; private set; }
+    public SkinsMananger skinMananger;
+    public CameraBehaviour cameraBehaviour { get; private set; }
     public List<Skin> gameSkins = new List<Skin>();
 
     private void Start()
@@ -47,6 +49,8 @@ public class GameController : MonoBehaviour
         pIBehaviour = FindObjectOfType<PointsIndicator_Behaviour>();
 
         skinMenuBeaviour = FindObjectOfType<SkinMenuBehaviour>();
+        skinMananger = FindObjectOfType<SkinsMananger>();
+        cameraBehaviour = FindObjectOfType<CameraBehaviour>();
         Object[] skinsToLoad = Resources.LoadAll("Prefabs/Skins" , typeof(Skin));
         foreach (Object s in skinsToLoad) gameSkins.Add((Skin)s);
         skinMenuBeaviour.skins = gameSkins;
@@ -126,7 +130,6 @@ public class GameController : MonoBehaviour
     public void LevelUp()
     {
         level++;
-
         switch (level)
         {
             case 1:

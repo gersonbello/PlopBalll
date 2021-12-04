@@ -13,7 +13,13 @@ public class PlayerNoGroundMode : Player
 
     IEnumerator TurnOffKinematicAfter()
     {
-        yield return new WaitForSeconds(timeBeforeEnablePhysics);
+        float cloack = 0;
+        while(cloack < timeBeforeEnablePhysics)
+        {
+            if (Input.anyKeyDown) break;
+            cloack += Time.deltaTime;
+            yield return null;
+        }
         fallJump = false;
         rig.isKinematic = false;
         rig.AddForce(Vector3.up * jumpForce, ForceMode2D.Impulse);

@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 3911313561068513201}
   - component: {fileID: 3911313561068513202}
-  - component: {fileID: 3911313561068513200}
+  - component: {fileID: 4398998000507094240}
   m_Layer: 0
   m_Name: Invisible Ground
   m_TagString: enemy
@@ -26,8 +26,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3911313561068513203}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.1137, y: -3.7342, z: 0}
-  m_LocalScale: {x: 2787.1543, y: 356.63617, z: 1}
+  m_LocalPosition: {x: -0.1137, y: -19.3006, z: 0}
+  m_LocalScale: {x: 2787.1543, y: 149.1051, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -84,7 +84,7 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!61 &3911313561068513200
+--- !u!61 &4398998000507094240
 BoxCollider2D:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -97,7 +97,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: -0.02}
+  m_Offset: {x: 0, y: 0}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -108,5 +108,5 @@ BoxCollider2D:
     adaptiveTiling: 1
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 0.01, y: 0.01}
+  m_Size: {x: 0.15, y: 0.15}
   m_EdgeRadius: 0

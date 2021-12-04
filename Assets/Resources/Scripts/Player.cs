@@ -93,13 +93,14 @@ public class Player : MonoBehaviour
     private void OnCollisionEnter2D(Collision2D coll)
     {
         StopCoroutine("RotateForTime");
-        if (rotateAtContact) StartCoroutine(RotateForTime(playerSkin, new Vector3(0, 0, Random.Range(-1.5f, -1f)), 3));
+        //if (rotateAtContact) StartCoroutine(RotateForTime(playerSkin, new Vector3(0, 0, Random.Range(-1.5f, -1f)), 3));
 
         if ((coll.transform.CompareTag("ground") || coll.transform.CompareTag("static ground")) && !GameOver)
         {
             if (groundHitEffect != null) gameObject.InstantiateFromQueue(groundHitEffect.gameObject, amQueue).transform.position = transform.position - bottomHitPos;
             if (forceFalling)
             {
+                if(GameController.gc.skinMananger != null)GameController.gc.skinMananger.LevelUp();
                 if(coll.transform.CompareTag("ground")) GameController.gc.AdPoints(5 + GameController.gc.level, Color.blue);
                 else GameController.gc.AdPoints(1 + GameController.gc.level, Color.yellow);
                 forceFalling = false;
@@ -110,8 +111,8 @@ public class Player : MonoBehaviour
                 Camera cam = FindObjectOfType<Camera>();
                 cam.backgroundColor = camGroundHitColor;
                 cam.gameObject.transform.position += Vector3.up * .5f;
-                StopCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
-                StartCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
+                GameController.gc.cameraBehaviour.StopCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
+                GameController.gc.cameraBehaviour.StartCoroutine(cam.GetComponent<CameraBehaviour>().SetBlackCamera());
 
                 CameraBehaviour CB = cam.GetComponent<CameraBehaviour>();
                 CB.StopCoroutine(CB.SetCameraPosition());

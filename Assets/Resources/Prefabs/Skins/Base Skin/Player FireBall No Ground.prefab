@@ -5019,7 +5019,7 @@ MonoBehaviour:
   amQueue: []
   playerSkin: {fileID: 0}
   rotateAtContact: 0
-  timeBeforeEnablePhysics: 5
+  timeBeforeEnablePhysics: 3
 --- !u!1 &8485097090171297690
 GameObject:
   m_ObjectHideFlags: 0
