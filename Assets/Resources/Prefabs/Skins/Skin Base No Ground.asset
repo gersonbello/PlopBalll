@@ -15,7 +15,7 @@ MonoBehaviour:
   skinName: No Ground Mode
   startVelocity: 7
   maxVelocity: 20
-  playerSkin: {fileID: 8485097088669350351, guid: bd61dc0f455b53a42bbe4eba5eca0862, type: 3}
+  playerSkin: {fileID: 3976791320564239478, guid: bd61dc0f455b53a42bbe4eba5eca0862, type: 3}
   groundSkin: {fileID: 3911313561068513203, guid: 25eb437c7db75cb4f9d4641a81eced52, type: 3}
   enemysSkins:
   - {fileID: 7900932466233346761, guid: 3185e58bb9f6d914c9896d24d6f8f4ba, type: 3}

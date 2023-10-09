@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.Events;
 
 public class Player : MonoBehaviour
 {
@@ -15,16 +16,44 @@ public class Player : MonoBehaviour
     [SerializeField] protected GameObject playerSkin;
     [SerializeField] protected bool rotateAtContact;
 
+    [Header("Events")]
+    [SerializeField] private UnityEvent onGroundHit;
+    [SerializeField] private UnityEvent onGroundHitLight;
+    [SerializeField] private UnityEvent onGroundHitHeavy;
+    [SerializeField] private UnityEvent onJump;
+    [SerializeField] private UnityEvent onDie;
+
     protected Rigidbody2D rig;
 
     protected Vector3 startPos, bottomHitPos;
 
     protected bool onGround, jump, fallJump, forceFalling;
 
-    void OnEnable()
+    [SerializeField] private float timeBeforeEnablePhysics = 3;
+    private void Start()
     {
         startPos = transform.position;
+        if (timeBeforeEnablePhysics <= 0) return;
+        rig.isKinematic = true;
+        StartCoroutine(TurnOffKinematicAfter());
+    }
 
+    IEnumerator TurnOffKinematicAfter()
+    {
+        float cloack = 0;
+        while (cloack < timeBeforeEnablePhysics)
+        {
+            if (Input.anyKeyDown) break;
+            cloack += Time.deltaTime;
+            yield return null;
+        }
+        fallJump = false;
+        rig.isKinematic = false;
+        rig.AddForce(Vector3.up * jumpForce, ForceMode2D.Impulse);
+    }
+
+    void OnEnable()
+    {
         rig = GetComponent<Rigidbody2D>();
         rig.constraints = RigidbodyConstraints2D.FreezePositionX;
 
@@ -46,14 +75,15 @@ public class Player : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             Camera cam = FindObjectOfType<Camera>();
-            if (cam.ScreenToWorldPoint(Input.mousePosition).x < cam.transform.position.x && !jump && !onGround)
+            if (cam.ScreenToViewportPoint(Input.mousePosition).x < .5f && !jump && !onGround)
             {
                 jump = true;
+                onJump.Invoke();
                 ImpulseBall(airJumpForce);
             }
             else
             {
-                if (cam.ScreenToWorldPoint(Input.mousePosition).x > cam.transform.position.x && !fallJump)
+                if (cam.ScreenToViewportPoint(Input.mousePosition).x > .5f && !fallJump)
                 {
                     forceFalling = true;
                     fallJump = true;
@@ -67,6 +97,7 @@ public class Player : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.UpArrow) && !jump && !onGround)
         {
             jump = true;
+            onJump.Invoke();
             ImpulseBall(airJumpForce);
         }
         if (Input.GetKeyDown(KeyCode.DownArrow) && !fallJump)
@@ -92,17 +123,18 @@ public class Player : MonoBehaviour
 
     private void OnCollisionEnter2D(Collision2D coll)
     {
-        StopCoroutine("RotateForTime");
+        StopCoroutine(nameof(RotateForTime));
         //if (rotateAtContact) StartCoroutine(RotateForTime(playerSkin, new Vector3(0, 0, Random.Range(-1.5f, -1f)), 3));
 
         if ((coll.transform.CompareTag("ground") || coll.transform.CompareTag("static ground")) && !GameOver)
         {
+            onGroundHit.Invoke();
             if (groundHitEffect != null) gameObject.InstantiateFromQueue(groundHitEffect.gameObject, amQueue).transform.position = transform.position - bottomHitPos;
             if (forceFalling)
             {
-                if(GameController.gc.skinMananger != null)GameController.gc.skinMananger.LevelUp();
-                if(coll.transform.CompareTag("ground")) GameController.gc.AdPoints(5 + GameController.gc.level, Color.blue);
-                else GameController.gc.AdPoints(1 + GameController.gc.level, Color.yellow);
+                onGroundHitHeavy.Invoke();
+                if(coll.transform.CompareTag("ground")) GameController.gc.AdPoints(5 + GameController.gc.level, Color.cyan);
+                else GameController.gc.AdPoints(1 + GameController.gc.level, Color.grey);
                 forceFalling = false;
                 ImpulseBall(fallJumpForce);
 
@@ -117,10 +149,12 @@ public class Player : MonoBehaviour
                 CameraBehaviour CB = cam.GetComponent<CameraBehaviour>();
                 CB.StopCoroutine(CB.SetCameraPosition());
                 CB.StartCoroutine(CB.SetCameraPosition());
+                if (GameController.gc.skinMananger != null) GameController.gc.skinMananger.LevelUp();
             }
             else
             {
-                GameController.gc.AdPoints(1 + GameController.gc.level, Color.yellow);
+                GameController.gc.AdPoints(1 + GameController.gc.level, Color.grey);
+                onGroundHitLight.Invoke();
                 ImpulseBall(jumpForce);
             }
             jump = false;
@@ -128,7 +162,7 @@ public class Player : MonoBehaviour
         }
         else if (coll.transform.CompareTag("enemy"))
         {
-            GameOver = true;
+            if (GameOver) return;
             rig.constraints = RigidbodyConstraints2D.None;
             rig.AddForce(Vector3.left * airJumpForce, ForceMode2D.Impulse);
             GameController.globalVelocity = 0;
@@ -140,6 +174,9 @@ public class Player : MonoBehaviour
 
     public IEnumerator Death()
     {
+        GameOver = true;
+        onDie.Invoke();
+        GameController.gc.GameOver();
         Camera cam = FindObjectOfType<Camera>();
         cam.backgroundColor = camDeathColor;
         cam.gameObject.transform.position += Vector3.up * .5f;
@@ -158,7 +195,7 @@ public class Player : MonoBehaviour
 
         transform.position = startPos;
 
-        FindObjectOfType<GameController>().RestartGame();
+        GameController.gc.RestartGame();
         StopAllCoroutines();
 
     }

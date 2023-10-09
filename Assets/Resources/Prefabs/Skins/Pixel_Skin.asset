@@ -15,7 +15,7 @@ MonoBehaviour:
   skinName: Pixel Mode
   startVelocity: 10
   maxVelocity: 15
-  playerSkin: {fileID: 8247784545001296555, guid: 43cacaa5cc84a444d84337ce3b5a6395, type: 3}
+  playerSkin: {fileID: 5628944363709264613, guid: 0c47344be2227ef4982b34d3481da11c, type: 3}
   groundSkin: {fileID: 3911313561068513203, guid: 0ee39fa886ab8ec4b8e40fe8285646f4, type: 3}
   enemysSkins:
   - {fileID: 4735462322318772131, guid: a74388533e0db174a814953b53548b05, type: 3}

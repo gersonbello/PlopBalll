@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.UI;
 public class SkinsMananger : MonoBehaviour
 {
@@ -12,6 +13,8 @@ public class SkinsMananger : MonoBehaviour
     GameObject playerRef;
     public bool readyToLevelUp;
     public Image readyToPlopImage;
+
+    [SerializeField] private UnityEvent onSkinChange;
 
     private void OnEnable()
     {
@@ -54,6 +57,7 @@ public class SkinsMananger : MonoBehaviour
         if(levelSkin < gameLevelsSkins.Count) SetSkin(gameLevelsSkins[levelSkin]);
         GameController.gc.cameraBehaviour.StopCoroutine(GameController.gc.cameraBehaviour.SetBlackCamera());
         GameController.gc.cameraBehaviour.StartCoroutine(GameController.gc.cameraBehaviour.SetBlackCamera());
+        onSkinChange.Invoke();
         StartCoroutine(ReadyToPlop());
     }
 

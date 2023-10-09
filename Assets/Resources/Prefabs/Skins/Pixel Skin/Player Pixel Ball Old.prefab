@@ -236,7 +236,7 @@ GameObject:
   - component: {fileID: 8247784545001296554}
   - component: {fileID: 8247784545001296550}
   m_Layer: 0
-  m_Name: Player Pixel Ball
+  m_Name: Player Pixel Ball Old
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

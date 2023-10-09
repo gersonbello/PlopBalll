@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using GameAnalyticsSDK;
 
 public class ScoreBeaviour : MonoBehaviour
 {
@@ -18,6 +19,8 @@ public class ScoreBeaviour : MonoBehaviour
     {
         bestIndicator.SetActive(points >= GameController.gc.bestPoints);
         bestScoreText.text = $"Best: {GameController.gc.bestPoints.ToString().PadLeft(3, '0')}";
+
+        if(points >= GameController.gc.bestPoints) GameAnalytics.NewProgressionEvent(GAProgressionStatus.Complete, points.ToString());
 
         pointsText.text = "00";
         xpBar.fillAmount = GameController.gc.xp / maxXp;

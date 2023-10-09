@@ -26,16 +26,18 @@ public class GameController : MonoBehaviour
     public int bestPoints { get; private set; }
     [SerializeField] TMPro.TextMeshProUGUI pointText;
     [SerializeField] TMPro.TextMeshProUGUI bestPointText;
+    [SerializeField] UnityEvent onStart;
+    [SerializeField] UnityEvent onGameOver;
     [SerializeField] UnityEvent deathEvents;
     public Skin equippedSkin;
 
-
+    bool gameStarted;
     [SerializeField] int startVelocity { get { return equippedSkin != null ? equippedSkin.startVelocity : 0; } }
     [SerializeField] int maxVelocity { get { return equippedSkin != null ? equippedSkin.maxVelocity : 0; } }
     public static int globalVelocity;
     public Queue<GameObject> entitiesToMoveQueue = new Queue<GameObject>();
-    [SerializeField] private List<GameObject> entitiesToMove = new List<GameObject>();
-    [SerializeField] private Queue<GameObject> entitiesToDestroy = new Queue<GameObject>();
+    private List<GameObject> entitiesToMove = new List<GameObject>();
+    private Queue<GameObject> entitiesToDestroy = new Queue<GameObject>();
     public ScoreBeaviour scoreBeaviour { get; private set; }
     public PointsIndicator_Behaviour pIBehaviour { get; private set; }
     public SkinMenuBehaviour skinMenuBeaviour { get; private set; }
@@ -64,16 +66,10 @@ public class GameController : MonoBehaviour
     #region Move Entities
     private void FixedUpdate()
     {
-        if (Input.GetKeyDown(KeyCode.R)) ResetSaveGame();
         AddEntities();
         MoveEntity();
         DestroyEntities();
     }
-
-    public void StartGame()
-    {
-    }
-
     void AddEntities()
     {
         if (entitiesToMoveQueue == null) return;
@@ -87,7 +83,7 @@ public class GameController : MonoBehaviour
         foreach (GameObject trans in entitiesToMove)
         {
             trans.transform.Translate(Vector2.left * globalVelocity * t, Space.World);
-            if (trans.transform.position.x < -15) 
+            if (Camera.main.WorldToScreenPoint(trans.transform.position).x < -0.15f) 
                 entitiesToDestroy.Enqueue(trans);
         }
     }
@@ -140,6 +136,18 @@ public class GameController : MonoBehaviour
                 break;
         }
     }
+    public void StartGame()
+    {
+        if (gameStarted) return;
+        gameStarted = true;
+        onStart.Invoke();
+    }
+
+    public void GameOver()
+    {
+        gameStarted = false;
+        onGameOver.Invoke();
+    }
     public void RestartGame()
     {
         level = 0;
@@ -163,48 +171,14 @@ public class GameController : MonoBehaviour
     }
     public void SaveGame()
     {
-        if (points > bestPoints) bestPoints = points;
-        bestPointText.text = "Best: " + bestPoints.ToString("D4");
-
-        SaveProfile saveProfile = new SaveProfile();
-        saveProfile.bestPoints = bestPoints;
-        saveProfile.xp = xp;
-
-        string saveString = JsonUtility.ToJson(saveProfile);
-
-        File.WriteAllText(Application.persistentDataPath + "/saveFile.json", saveString);
-
-        Debug.Log(saveString);
-        Debug.Log(Application.persistentDataPath + "/saveFile.json");
-    }
-    public void ResetSaveGame()
-    {
-        SaveProfile saveProfile = new SaveProfile();
-        saveProfile.bestPoints = 0;
-        saveProfile.xp = 0;
-
-        string saveString = JsonUtility.ToJson(saveProfile);
-
-        File.WriteAllText(Application.persistentDataPath + "/saveFile.json", saveString);
-
-        Debug.Log(saveString);
-        Debug.Log(Application.persistentDataPath + "/saveFile.json");
-
-        LoadGame();
+        PlayerPrefs.SetInt("BestScore", bestPoints);
+        PlayerPrefs.SetInt("Xp", xp);
     }
     public void LoadGame()
     {
-        if (!File.Exists(Application.persistentDataPath + "/saveFile.json")) return;
-
-        SaveProfile loadProfile;
-        string loadString = File.ReadAllText(Application.persistentDataPath + "/saveFile.json");
-
-        loadProfile = JsonUtility.FromJson<SaveProfile>(loadString);
-        bestPoints = loadProfile.bestPoints;
-        xp = loadProfile.xp;
-
+        bestPoints = PlayerPrefs.GetInt("BestScore", 0);
+        xp = PlayerPrefs.GetInt("Xp", 0);
         bestPointText.text = "Best: " + bestPoints.ToString("D4");
-        Debug.Log(loadProfile);
     }
     #endregion
 }
