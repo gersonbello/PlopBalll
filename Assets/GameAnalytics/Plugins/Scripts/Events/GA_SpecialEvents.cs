@@ -40,7 +40,6 @@ namespace GameAnalyticsSDK.Events
 
         public void Start ()
         {
-            GameAnalytics.Initialize();
             StartCoroutine(SubmitFPSRoutine());
             StartCoroutine(CheckCriticalFPSRoutine());
         }
@@ -122,7 +121,8 @@ namespace GameAnalyticsSDK.Events
 
                     if (fpsSinceUpdate > 0)
                     {
-                        GameAnalytics.NewDesignEvent("GA:AverageFPS", ((int)fpsSinceUpdate));
+                        if(GameAnalytics.Initialized)
+                            GameAnalytics.NewDesignEvent("GA:AverageFPS", ((int)fpsSinceUpdate));
                     }
                 }
             }
@@ -131,7 +131,9 @@ namespace GameAnalyticsSDK.Events
             {
                 if (_criticalFpsCount > 0)
                 {
-                    GameAnalytics.NewDesignEvent("GA:CriticalFPS", _criticalFpsCount);
+                    if(GameAnalytics.Initialized)
+                        GameAnalytics.NewDesignEvent("GA:CriticalFPS", _criticalFpsCount);
+                        
                     _criticalFpsCount = 0;
                 }
             }

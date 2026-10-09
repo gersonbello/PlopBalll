@@ -27,6 +27,11 @@ PluginImporter:
     second:
       enabled: 1
       settings: {}
-  userData: 
+  - first:
+      tvOS: tvOS
+    second:
+      enabled: 1
+      settings: {}
+  userData:
   assetBundleName: 
   assetBundleVariant: 

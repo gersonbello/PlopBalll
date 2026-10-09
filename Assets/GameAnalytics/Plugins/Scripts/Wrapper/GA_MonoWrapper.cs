@@ -7,7 +7,7 @@ namespace GameAnalyticsSDK.Wrapper
 {
     public partial class GA_Wrapper
     {
-#if (UNITY_STANDALONE || UNITY_WP_8_1 || UNITY_SAMSUNGTV) && (!UNITY_EDITOR)
+#if GA_USE_MONO_WRAPPER && (UNITY_STANDALONE && (!UNITY_EDITOR))
 
         private class UnityRemoteConfigsListener : GameAnalyticsSDK.Net.IRemoteConfigsListener
         {
@@ -217,7 +217,7 @@ namespace GameAnalyticsSDK.Wrapper
 
         public static string getUserId()
         {
-            return "";
+            return GameAnalyticsSDK.Net.GameAnalytics.GetUserId();
         }
 #endif
     }

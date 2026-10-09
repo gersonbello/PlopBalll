@@ -72,6 +72,7 @@ public class Player : MonoBehaviour
         if (GameOver) return;
 
         //Touch
+        #if UNITY_ANDROID || UNITY_IOS
         if (Input.GetMouseButtonDown(0))
         {
             Camera cam = FindObjectOfType<Camera>();
@@ -92,6 +93,35 @@ public class Player : MonoBehaviour
             }
             return;
         }
+        #else
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (!jump && !onGround)
+            {
+                jump = true;
+                onJump.Invoke();
+                ImpulseBall(airJumpForce);
+            }
+            else
+            {
+                if (!fallJump)
+                {
+                    forceFalling = true;
+                    fallJump = true;
+                    ImpulseBall(-fallForce);
+                }
+            }
+        }
+        if (Input.GetMouseButtonDown(1))
+        {
+            if (!fallJump)
+                {
+                    forceFalling = true;
+                    fallJump = true;
+                    ImpulseBall(-fallForce);
+                }   
+        }
+        #endif
 
         //Arrow
         if (Input.GetKeyDown(KeyCode.UpArrow) && !jump && !onGround)
@@ -106,7 +136,7 @@ public class Player : MonoBehaviour
             fallJump = true;
             ImpulseBall(-fallForce);
         }
-        if (onGround && rig.velocity.normalized == new Vector2())
+        if (onGround && rig.linearVelocity.normalized == new Vector2())
         {
             forceFalling = false;
             jump = false;
@@ -117,7 +147,7 @@ public class Player : MonoBehaviour
 
     public void ImpulseBall(float force)
     {
-        rig.velocity = new Vector2();
+        rig.linearVelocity = new Vector2();
         rig.AddForce(Vector3.up * force, ForceMode2D.Impulse);
     }
 

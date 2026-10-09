@@ -10,7 +10,19 @@ namespace GameAnalyticsSDK.Editor
         [MenuItem ("Window/GameAnalytics/Select Settings", false, 0)]
         static void SelectGASettings ()
         {
+            System.Type inspectorType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+            EditorWindow inspector = inspectorType != null ? EditorWindow.GetWindow(inspectorType) : null;
+
+            ActiveEditorTracker tracker = ActiveEditorTracker.sharedTracker;
+            tracker.isLocked = false;
             Selection.activeObject = GameAnalytics.SettingsGA;
+            tracker.ForceRebuild();
+            tracker.isLocked = true;
+
+            if (inspector != null)
+            {
+                inspector.Repaint();
+            }
         }
 
         [MenuItem ("Window/GameAnalytics/Setup Guide", false, 100)]
@@ -20,7 +32,7 @@ namespace GameAnalyticsSDK.Editor
             signup.maxSize = new Vector2(640, 600);
             signup.minSize = new Vector2(640, 600);
 
-            signup.titleContent = new GUIContent ("GameAnalytics - Sign up for FREE");
+            signup.titleContent = new GUIContent ("GameAnalytics - Setup Guide");
             signup.ShowUtility ();
             signup.Opened();
 
@@ -30,7 +42,7 @@ namespace GameAnalyticsSDK.Editor
         [MenuItem ("Window/GameAnalytics/Create GameAnalytics Object", false, 200)]
         static void AddGASystemTracker ()
         {
-            if (Object.FindObjectOfType (typeof(GameAnalytics)) == null)
+            if (Object.FindAnyObjectByType<GameAnalytics>() == null)
             {
                 GameObject go = PrefabUtility.InstantiatePrefab(AssetDatabase.LoadAssetAtPath(GameAnalytics.WhereIs("GameAnalytics.prefab", "Prefab"), typeof(GameObject))) as GameObject;
                 go.name = "GameAnalytics";

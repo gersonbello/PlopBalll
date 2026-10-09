@@ -54,7 +54,14 @@ namespace GameAnalyticsSDK
         Playable = 3,
         Interstitial = 4,
         OfferWall = 5,
-        Banner = 6
+        Banner = 6,
+        AppOpen = 7
+    }
+
+    public enum GAStore
+    {
+        AppStore = 0,
+        GooglePlay = 1
     }
 
     public enum GAAdError
@@ -66,5 +73,17 @@ namespace GameAnalyticsSDK
         InternalError = 4,
         InvalidRequest = 5,
         UnableToPrecache = 6
+    }
+
+    /// <summary>
+    /// Mirrors the native C++ GALoggerMessageType enum.
+    /// </summary>
+    internal enum GANativeLogType
+    {
+        Error   = 0,
+        Warning = 1,
+        Info    = 2,
+        Debug   = 3,
+        Verbose = 4
     }
 }

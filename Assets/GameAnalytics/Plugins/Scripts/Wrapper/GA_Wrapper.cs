@@ -8,7 +8,7 @@ namespace GameAnalyticsSDK.Wrapper
 {
     public partial class GA_Wrapper
     {
-        #if (UNITY_EDITOR || (!UNITY_IOS && !UNITY_ANDROID && !UNITY_TVOS && !UNITY_STANDALONE && !UNITY_WEBGL && !UNITY_WSA && !UNITY_WP_8_1 && !UNITY_TIZEN && !UNITY_SAMSUNGTV))
+        #if (UNITY_EDITOR || (!UNITY_IOS && !UNITY_ANDROID && !UNITY_TVOS && !UNITY_STANDALONE && !UNITY_WEBGL))
 
         private static void configureAvailableCustomDimensions01 (string list)
         {
@@ -162,6 +162,13 @@ namespace GameAnalyticsSDK.Wrapper
             }
         }
         #endif
+
+        private static void addBusinessEventWithReceiptInfo (string currency, int amount, string itemType, string itemId, string cartType, GAReceiptInfo receipt, string fields, bool mergeFields)
+        {
+            if (GameAnalytics.SettingsGA.InfoLogEditor) {
+                Debug.Log ("addBusinessEventWithReceiptInfo(" + currency + "," + amount + "," + itemType + "," + itemId + "," + cartType + "," + receipt.Store + "," + receipt.TransactionId + "," + receipt.ProductId + ")");
+            }
+        }
 
         private static void addResourceEvent (int flowType, string currency, float amount, string itemType, string itemId, string fields, bool mergeFields)
         {
@@ -411,6 +418,15 @@ namespace GameAnalyticsSDK.Wrapper
             setEventSubmission (enabled);
         }
 
+        public static void SetEnabledEventSubmission (bool enabled, bool doCache)
+        {
+            #if !UNITY_EDITOR && (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID)
+                setEventSubmission (enabled, doCache);
+            #else
+                setEventSubmission (enabled);
+            #endif
+        }
+
         public static void SetAutoDetectAppVersion (bool flag)
         {
             configureAutoDetectAppVersion (flag);
@@ -447,18 +463,17 @@ namespace GameAnalyticsSDK.Wrapper
 
         public static void SetCustomDimension01 (string customDimension)
         {
-            setCustomDimension01 (customDimension);
+            setCustomDimension01 (customDimension ?? string.Empty);
         }
 
         public static void SetCustomDimension02 (string customDimension)
         {
-
-            setCustomDimension02 (customDimension);
+            setCustomDimension02 (customDimension ?? string.Empty);
         }
 
         public static void SetCustomDimension03 (string customDimension)
         {
-            setCustomDimension03 (customDimension);
+            setCustomDimension03 (customDimension ?? string.Empty);
         }
 
         public static void SetGlobalCustomEventFields(IDictionary<string, object> customFields)
@@ -502,6 +517,31 @@ namespace GameAnalyticsSDK.Wrapper
 #endif
         }
 #endif
+
+        public static void AddBusinessEvent (string currency, int amount, string itemType, string itemId, string cartType, GAReceiptInfo receipt, IDictionary<string, object> fields, bool mergeFields)
+        {
+            string fieldsAsString = DictionaryToJsonString(fields);
+#if UNITY_EDITOR
+            if (GAValidator.ValidateBusinessEvent (currency, amount, cartType, itemType, itemId)) {
+                addBusinessEventWithReceiptInfo (currency, amount, itemType, itemId, cartType, receipt, fieldsAsString, mergeFields);
+            }
+#elif UNITY_IOS || UNITY_TVOS
+            if (receipt.Store != GAStore.AppStore || string.IsNullOrEmpty(receipt.TransactionId)) {
+                Debug.LogError ("GameAnalytics: business event dropped, purchase validation on iOS/tvOS needs GAReceiptInfo.AppStore with a transaction id");
+                return;
+            }
+            addBusinessEventWithTransactionId (currency, amount, itemType, itemId, cartType, receipt.TransactionId, fieldsAsString, mergeFields);
+#elif UNITY_ANDROID
+            if (receipt.Store != GAStore.GooglePlay || string.IsNullOrEmpty(receipt.ProductId) || string.IsNullOrEmpty(receipt.PurchaseToken)) {
+                Debug.LogError ("GameAnalytics: business event dropped, purchase validation on Android needs GAReceiptInfo.GooglePlay with a product id and purchase token");
+                return;
+            }
+            addBusinessEventWithReceiptInfo (currency, amount, itemType, itemId, cartType, "google_play_store", receipt.ProductId, receipt.PurchaseToken, fieldsAsString, mergeFields);
+#else
+            Debug.LogWarning ("GameAnalytics: purchase validation is only available on iOS, tvOS and Android, sending the business event without receipt");
+            addBusinessEvent (currency, amount, itemType, itemId, cartType, fieldsAsString, mergeFields);
+#endif
+        }
 
         public static void AddResourceEvent (GAResourceFlowType flowType, string currency, float amount, string itemType, string itemId, IDictionary<string, object> fields, bool mergeFields)
         {
@@ -583,7 +623,7 @@ namespace GameAnalyticsSDK.Wrapper
             {
                 addAdEventWithDuration((int)adAction, (int)adType, adSdkName, adPlacement, duration, fieldsAsString, mergeFields);
             }
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID || UNITY_WEBGL
                 addAdEventWithDuration((int)adAction, (int)adType, adSdkName, adPlacement, duration, fieldsAsString, mergeFields);
 #endif
         }
@@ -596,7 +636,7 @@ namespace GameAnalyticsSDK.Wrapper
             {
                 addAdEventWithReason((int)adAction, (int)adType, adSdkName, adPlacement, (int)noAdReason, fieldsAsString, mergeFields);
             }
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID || UNITY_WEBGL
                 addAdEventWithReason((int)adAction, (int)adType, adSdkName, adPlacement, (int)noAdReason, fieldsAsString, mergeFields);
 #endif
         }
@@ -609,8 +649,29 @@ namespace GameAnalyticsSDK.Wrapper
             {
                 addAdEvent((int)adAction, (int)adType, adSdkName, adPlacement, fieldsAsString, mergeFields);
             }
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID || UNITY_WEBGL
                 addAdEvent((int)adAction, (int)adType, adSdkName, adPlacement, fieldsAsString, mergeFields);
+#endif
+        }
+
+        public static void ConfigureCustomLogHandler(GANativeLogCallback callback)
+        {
+#if UNITY_STANDALONE && !(UNITY_EDITOR) && !(GA_USE_MONO_WRAPPER)
+            configureCustomLogHandler(callback);
+#endif
+        }
+
+        // Drives the native SDK's end-of-app sequence (ends session, flushes
+        // event queue, joins worker thread). Must be called while the host
+        // runtime is still alive so the session_end event and its log lines
+        // can be routed through the custom log handler before Mono tears
+        // down. Without this, that work would only happen later in
+        // ~GAState during static destruction, by which point the handler
+        // has been reset and the logs go to the SDK's default sink.
+        public static void OnQuit()
+        {
+#if UNITY_STANDALONE && !(UNITY_EDITOR) && !(GA_USE_MONO_WRAPPER)
+            gameAnalyticsOnQuit();
 #endif
         }
 
@@ -632,17 +693,23 @@ namespace GameAnalyticsSDK.Wrapper
 
         public static bool IsRemoteConfigsReady()
         {
-#if (UNITY_WSA) && (!UNITY_EDITOR)
-            return isRemoteConfigsReady() != 0;
-#else
             return isRemoteConfigsReady();
-#endif
         }
 
         public static string GetRemoteConfigsContentAsString()
         {
             return getRemoteConfigsContentAsString();
         }
+
+        public static string GetRemoteConfigsContentAsJSON()
+        {
+            #if (UNITY_IOS || UNITY_TVOS) && !(UNITY_EDITOR)
+                return getRemoteConfigsContentAsJSON();
+            #else
+                return GetRemoteConfigsContentAsString();
+            #endif
+        }
+
 
         public static string GetABTestingId()
         {
@@ -654,17 +721,35 @@ namespace GameAnalyticsSDK.Wrapper
             return getABTestingVariantId();
         }
 
+        public static void SetExternalUserId(string userId)
+        {
+            #if (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID) && !(UNITY_EDITOR)
+                configureExternalUserId(userId);
+            #else
+                return;
+            #endif
+        }
+
+        public static string GetExternalUserId()
+        {
+            #if (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID) && !(UNITY_EDITOR)
+                return getExternalUserId();
+            #else
+                return "";
+            #endif
+        }
+
         private static string DictionaryToJsonString(IDictionary<string, object> dict)
         {
-            Hashtable table = new Hashtable();
-            if (dict != null)
+            if (dict == null)
             {
-                foreach (KeyValuePair<string, object> pair in dict)
-                {
-                    table.Add(pair.Key, pair.Value);
-                }
+                return "{}";
             }
-            return GA_MiniJSON.Serialize(table);
+            if (dict is IDictionary asDict)
+            {
+                return GA_MiniJSON.Serialize(asDict);
+            }
+            return GA_MiniJSON.Serialize(new Dictionary<string, object>(dict));
         }
 
         // TIMER FUNCTIONS
@@ -672,7 +757,7 @@ namespace GameAnalyticsSDK.Wrapper
         {
 #if UNITY_EDITOR
             startTimer(key);
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID
             startTimer(key);
 #endif
         }
@@ -681,7 +766,7 @@ namespace GameAnalyticsSDK.Wrapper
         {
 #if UNITY_EDITOR
             pauseTimer(key);
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID
             pauseTimer(key);
 #endif
         }
@@ -690,7 +775,7 @@ namespace GameAnalyticsSDK.Wrapper
         {
 #if UNITY_EDITOR
             resumeTimer(key);
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID
             resumeTimer(key);
 #endif
         }
@@ -699,11 +784,42 @@ namespace GameAnalyticsSDK.Wrapper
         {
 #if UNITY_EDITOR
             return stopTimer(key);
-#elif UNITY_IOS || UNITY_ANDROID
+#elif UNITY_IOS || UNITY_TVOS || UNITY_ANDROID
             return stopTimer(key);
 #else
             return 0;
 #endif
         }
+
+        ///// HEALTH
+
+        public static void EnableSDKInitEvent(bool flag)
+        {
+            #if !UNITY_EDITOR && (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID)
+                enableSDKInitEvent(flag);
+            #endif
+        }
+
+        public static void EnableFpsHistogram(bool flag)
+        {
+            #if !UNITY_EDITOR && (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID)
+                enableFpsHistogram(flag);
+            #endif
+        }
+
+        public static void EnableMemoryHistogram(bool flag)
+        {
+            #if !UNITY_EDITOR && (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID)
+                enableMemoryHistogram(flag);
+            #endif
+        }
+
+        public static void EnableHealthHardwareInfo(bool flag)
+        {
+            #if !UNITY_EDITOR && (UNITY_IOS || UNITY_TVOS || UNITY_ANDROID)
+                enableHealthHardwareInfo(flag);
+            #endif
+        }
     }
+
 }

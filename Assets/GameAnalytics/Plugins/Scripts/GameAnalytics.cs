@@ -6,14 +6,13 @@ using GameAnalyticsSDK.Events;
 using GameAnalyticsSDK.Setup;
 using GameAnalyticsSDK.Wrapper;
 using GameAnalyticsSDK.State;
-using System.Runtime.InteropServices;
 
 #if UNITY_EDITOR
 using UnityEditor;
 using System.IO;
 #endif
 
-#if UNITY_IOS
+#if UNITY_IOS || UNITY_TVOS
 using GameAnalyticsSDK.iOS;
 #endif
 
@@ -46,12 +45,23 @@ namespace GameAnalyticsSDK
 
         private static bool _hasInitializeBeenCalled;
 
-        #region unity derived methods
+        public static event EventHandler<bool> onInitialize;
+        public static bool Initialized { get{ return _hasInitializeBeenCalled; } }
 
-        #if UNITY_EDITOR
+        #region unity derived methods
+        void Start()
+        {
+            Initialize();
+        }
+
+#if UNITY_EDITOR
         void OnEnable()
         {
+#if UNITY_6000_5_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI += GameAnalytics.HierarchyWindowCallback;
+#else
             EditorApplication.hierarchyWindowItemOnGUI += GameAnalytics.HierarchyWindowCallback;
+#endif
 
             if(Application.isPlaying)
                 _instance = this;
@@ -59,7 +69,11 @@ namespace GameAnalyticsSDK
 
         void OnDisable()
         {
+#if UNITY_6000_5_OR_NEWER
+            EditorApplication.hierarchyWindowItemByEntityIdOnGUI -= GameAnalytics.HierarchyWindowCallback;
+#else
             EditorApplication.hierarchyWindowItemOnGUI -= GameAnalytics.HierarchyWindowCallback;
+#endif
         }
         #else
         void OnEnable()
@@ -101,22 +115,19 @@ namespace GameAnalyticsSDK
                 _instance = null;
         }
 
-#if (!UNITY_EDITOR && UNITY_WSA)
-        [DllImport("GameAnalytics.UWP.dll")]
-        private static extern void onQuit();
-#endif
-
         void OnApplicationQuit()
         {
-#if (!UNITY_EDITOR && !UNITY_IOS && !UNITY_ANDROID && !UNITY_TVOS && !UNITY_WEBGL && !UNITY_TIZEN && !UNITY_SWITCH && !UNITY_PS4 && !UNITY_XBOXONE)
-#if (UNITY_WSA)
-            onQuit();
-#else
+#if (!UNITY_EDITOR && UNITY_STANDALONE)
+#if GA_USE_MONO_WRAPPER
             GameAnalyticsSDK.Net.GameAnalytics.OnQuit();
-# endif
-#if UNITY_STANDALONE
-            System.Threading.Thread.Sleep(1500);
+#else
+            // C++ wrapper path: drive end-of-session through the native SDK
+            // while Mono is still alive, so the SESSION END event and its
+            // log lines are routed through the custom log handler before
+            // ~GAState runs during static destruction.
+            GA_Wrapper.OnQuit();
 #endif
+            System.Threading.Thread.Sleep(1500);
 #endif
         }
 
@@ -175,6 +186,10 @@ namespace GameAnalyticsSDK
             if(!Application.isPlaying)
                 return; // no need to setup anything else if we are in the editor and not playing
 
+            // Route native logs to Unity before anything else, so any log
+            // emitted by subsequent setup calls is captured by our handler.
+            GA_Wrapper.ConfigureCustomLogHandler(GA_NativeLogger.GetCallback());
+
             if(SettingsGA.InfoLogBuild)
             {
                 GA_Setup.SetInfoLog(true);
@@ -192,24 +207,15 @@ namespace GameAnalyticsSDK
 
             if(platformIndex >= 0)
             {
-                if (GameAnalytics.SettingsGA.UsePlayerSettingsBuildNumber) {
-                    for (int i = 0; i < GameAnalytics.SettingsGA.Platforms.Count; ++i) {
-                        if (GameAnalytics.SettingsGA.Platforms [i] == RuntimePlatform.Android || GameAnalytics.SettingsGA.Platforms [i] == RuntimePlatform.IPhonePlayer) {
-                            GameAnalytics.SettingsGA.Build [i] = Application.version;
-                        }
-                    }
-                    if (GameAnalytics.SettingsGA.Platforms [platformIndex] == RuntimePlatform.Android || GameAnalytics.SettingsGA.Platforms [platformIndex] == RuntimePlatform.IPhonePlayer)
-                    {
-                        GA_Wrapper.SetAutoDetectAppVersion(true);
-                    }
-                    else
-                    {
-                        GA_Wrapper.SetBuild (SettingsGA.Build [platformIndex]);
-                    }
+                // Build number source is chosen per platform in the settings inspector
+                // (auto = the native SDK reports Player Settings > Version itself).
+                if (SettingsGA.IsBuildNumberAutoDetected(platformIndex))
+                {
+                    GA_Wrapper.SetAutoDetectAppVersion(true);
                 }
                 else
                 {
-                    GA_Wrapper.SetBuild (SettingsGA.Build [platformIndex]);
+                    GA_Wrapper.SetBuild(SettingsGA.Build[platformIndex]);
                 }
             }
 
@@ -242,10 +248,24 @@ namespace GameAnalyticsSDK
             {
                 SetEnabledManualSessionHandling(true);
             }
+
+            EnableSDKInitEvent(SettingsGA.EnableSDKInitEvent);
+            EnableFpsHistogram(SettingsGA.EnableFPSHistogram);
+            EnableMemoryHistogram(SettingsGA.EnableMemoryHistogram);
+            EnableHealthHardwareInfo(SettingsGA.EnableHardwareTracking);
+
         }
 
         public static void Initialize ()
         {
+            // Initialization touches main-thread-only Unity APIs; marshal if called off-thread.
+            if (GameAnalyticsSDK.Utilities.GA_MainThreadDispatcher.IsInitialized
+                && !GameAnalyticsSDK.Utilities.GA_MainThreadDispatcher.IsMainThread)
+            {
+                GameAnalyticsSDK.Utilities.GA_MainThreadDispatcher.RunOnMainThread(Initialize);
+                return;
+            }
+
             InternalInitialize();
             int platformIndex = GetPlatformIndex();
 
@@ -253,11 +273,14 @@ namespace GameAnalyticsSDK
             {
                 GA_Wrapper.Initialize (SettingsGA.GetGameKey (platformIndex), SettingsGA.GetSecretKey (platformIndex));
                 GameAnalytics._hasInitializeBeenCalled = true;
+
+                onInitialize?.Invoke(typeof(GameAnalytics), true);
             }
             else
             {
                 GameAnalytics._hasInitializeBeenCalled = true;
                 Debug.LogWarning("GameAnalytics: Unsupported platform (events will not be sent in editor; or missing platform in settings): " + Application.platform);
+                onInitialize?.Invoke(typeof(GameAnalytics), false);
             }
         }
 
@@ -417,6 +440,47 @@ namespace GameAnalyticsSDK
             GA_Business.NewEventGooglePlay(currency, amount, itemType, itemId, cartType, receipt, signature, customFields, mergeFields);
         }
 #endif
+
+        /// <summary>
+        /// Track any real money transaction in-game and have the purchase validated server side against the store.
+        /// Supported on iOS, tvOS (App Store) and Android (Google Play); on other platforms the event is sent without validation.
+        /// </summary>
+        /// <param name="currency">Currency code in ISO 4217 format. (e.g. USD).</param>
+        /// <param name="amount">Amount in cents (int). (e.g. 99).</param>
+        /// <param name="itemType">Item Type bought. (e.g. Gold Pack).</param>
+        /// <param name="itemId">Item bought. (e.g. 1000 gold).</param>
+        /// <param name="cartType">Cart type.</param>
+        /// <param name="receipt">Store identifiers of the purchase, see <see cref="GAReceiptInfo.AppStore"/> and <see cref="GAReceiptInfo.GooglePlay"/>.</param>
+        public static void NewBusinessEvent(string currency, int amount, string itemType, string itemId, string cartType, GAReceiptInfo receipt)
+        {
+            if(!GameAnalytics._hasInitializeBeenCalled)
+            {
+                Debug.LogError("GameAnalytics: REMEMBER THE SDK NEEDS TO BE MANUALLY INITIALIZED NOW");
+                return;
+            }
+            GA_Business.NewEvent(currency, amount, itemType, itemId, cartType, receipt, null, false);
+        }
+
+        /// <summary>
+        /// Track any real money transaction in-game and have the purchase validated server side against the store.
+        /// Supported on iOS, tvOS (App Store) and Android (Google Play); on other platforms the event is sent without validation.
+        /// </summary>
+        /// <param name="currency">Currency code in ISO 4217 format. (e.g. USD).</param>
+        /// <param name="amount">Amount in cents (int). (e.g. 99).</param>
+        /// <param name="itemType">Item Type bought. (e.g. Gold Pack).</param>
+        /// <param name="itemId">Item bought. (e.g. 1000 gold).</param>
+        /// <param name="cartType">Cart type.</param>
+        /// <param name="receipt">Store identifiers of the purchase, see <see cref="GAReceiptInfo.AppStore"/> and <see cref="GAReceiptInfo.GooglePlay"/>.</param>
+        /// <param name="customFields">Custom fields to add to the event. Dictionary of key-value pairs. Only string or numbers allowed as values. Custom fields are only stored in raw events and can only be used for data export (i.e. not visible in the tool).</param>
+        public static void NewBusinessEvent(string currency, int amount, string itemType, string itemId, string cartType, GAReceiptInfo receipt, IDictionary<string, object> customFields, bool mergeFields = false)
+        {
+            if(!GameAnalytics._hasInitializeBeenCalled)
+            {
+                Debug.LogError("GameAnalytics: REMEMBER THE SDK NEEDS TO BE MANUALLY INITIALIZED NOW");
+                return;
+            }
+            GA_Business.NewEvent(currency, amount, itemType, itemId, cartType, receipt, customFields, mergeFields);
+        }
 
         /// <summary>
         /// Track any type of design event that you want to measure i.e. GUI elements or tutorial steps. Custom dimensions are not supported.
@@ -874,7 +938,32 @@ namespace GameAnalyticsSDK
         /// </summary>
         public static String GetUserId()
         {
-            return GA_Wrapper.getUserId();
+            if (Initialized)
+            {
+                return GA_Wrapper.getUserId();
+            }
+            else
+            {
+                return "";
+            }
+        }
+
+        /// <summary>
+        /// gets the current external user id (if any)
+        /// </summary>
+        public static String GetExternalUserId()
+        {
+            return GA_Wrapper.GetExternalUserId();
+        }
+
+        /// <summary>
+        /// Sets an optional external user id. Will be attached to every event. Has no impact on the GA process
+        /// Can be set or changed at any time
+        /// </summary>
+        /// <param name="externalUserId">External User identifier.</param>
+        public static void SetExternalUserId(string externalUserId)
+        {
+            GA_Wrapper.SetExternalUserId(externalUserId);
         }
 
         /// <summary>
@@ -893,6 +982,16 @@ namespace GameAnalyticsSDK
         public static void SetEnabledEventSubmission(bool enabled)
         {
             GA_Wrapper.SetEnabledEventSubmission(enabled);
+        }
+
+        /// <summary>
+        /// Sets the enabled event submission.
+        /// </summary>
+        /// <param name="enabled">If set to <c>true</c> enabled.</param>
+        /// <param name="doCache">If set to <c>true</c> events will be cached locally even if submission is disabled.</param>
+        public static void SetEnabledEventSubmission(bool enabled, bool doCache)
+        {
+            GA_Wrapper.SetEnabledEventSubmission(enabled, doCache);
         }
 
         /// <summary>
@@ -986,6 +1085,11 @@ namespace GameAnalyticsSDK
             return GA_Wrapper.GetRemoteConfigsContentAsString();
         }
 
+        public static string GetRemoteConfigsContentAsJSON()
+        {
+            return GA_Wrapper.GetRemoteConfigsContentAsJSON();
+        }
+
         // ----------------------- A/B TESTING ---------------------- //
         public static string GetABTestingId()
         {
@@ -1017,13 +1121,67 @@ namespace GameAnalyticsSDK
             return GA_Wrapper.StopTimer(key);
         }
 
+        // ----------------------- HEALTH EVENT --------------------------------------------//
+
+        /// <summary>
+        /// enable the SDK init event to automatically track the boot time (time from application launch to the GameAnalytics SDK initialization).
+        /// (Android & iOS ONLY)
+        /// </summary>
+        /// <param name="flag">should be enabled or not</param>
+        public static void EnableSDKInitEvent(bool flag)
+        {
+            GA_Setup.EnableSDKInitEvent(flag);
+        }
+
+        /// <summary>
+        ///  Enable FPS sampling across the entire session to ultimately send an FPS histogram via the Session Performance Event.
+        ///  (Android & iOS ONLY)
+        /// </summary>
+        /// <param name="flag">should be enabled or not</param>
+        public static void EnableFpsHistogram(bool flag)
+        {
+            GA_Setup.EnableFpsHistogram(flag);
+        }
+
+        /// <summary>
+        ///  Enable memory usage sampling across the entire session to ultimately send a memory usage histogram via the Session Performance Event.
+        /// (Android & iOS ONLY)
+        /// </summary>
+        /// <param name="flag">should be enabled or not</param>
+        public static void EnableMemoryHistogram(bool flag)
+        {
+            GA_Setup.EnableMemoryHistogram(flag);
+        }
+
+        /// <summary>
+        /// (EXPERIMENTAL) enable discovery of device hardware information like,
+        /// cpu model, number of cpu cores, GPU model, chipset/hardware (if available).
+        /// these data points are added as properties to existing health
+        /// events (error, SDK init, session performance) if those are enabled.
+        //  (Android & iOS ONLY)
+        /// </summary>
+        /// <param name="flag">should be enabled or not</param>
+        public static void EnableHealthHardwareInfo(bool flag)
+        {
+            GA_Setup.EnableHealthHardwareInfo(flag);
+        }
+
         // ----------------------- IOS 14+ APP TRACKING TRANSPARENCY ---------------------- //
         public static void RequestTrackingAuthorization(IGameAnalyticsATTListener listener)
         {
-#if UNITY_IOS
+#if UNITY_IOS || UNITY_TVOS
             GameAnalyticsATTClient.Instance.RequestTrackingAuthorization(listener);
 #endif
         }
+
+        public static void EnableAdvertisingIdTracking(bool flag)
+        {
+#if UNITY_ANDROID && (!UNITY_EDITOR)
+            GA_Wrapper.enableGAIDTracking(flag);
+#endif
+        }
+
+        
 
         private static string GetUnityVersion()
         {
@@ -1080,12 +1238,6 @@ namespace GameAnalyticsSDK
                     result = SettingsGA.Platforms.IndexOf(platform);
                 }
             }
-            // HACK: To also check for RuntimePlatform.MetroPlayerARM, RuntimePlatform.MetroPlayerX64 and RuntimePlatform.MetroPlayerX86 which are deprecated but have same value as the WSA enums
-            else if (platform == RuntimePlatform.WSAPlayerARM || platform == RuntimePlatform.WSAPlayerX64 || platform == RuntimePlatform.WSAPlayerX86 ||
-                ((int)platform == (int)RuntimePlatform.WSAPlayerARM) || ((int)platform == (int)RuntimePlatform.WSAPlayerX64) || ((int)platform == (int)RuntimePlatform.WSAPlayerX86))
-            {
-                result = SettingsGA.Platforms.IndexOf(RuntimePlatform.WSAPlayerARM);
-            }
             else
             {
                 result = SettingsGA.Platforms.IndexOf(platform);
@@ -1103,9 +1255,6 @@ namespace GameAnalyticsSDK
         /// <param name="">File name including extension e.g. image.png</param>
         public static string WhereIs(string _file, string _type)
         {
-#if UNITY_SAMSUNGTV
-            return "";
-#else
             string[] guids = AssetDatabase.FindAssets("t:" + _type);
             foreach(string g in guids)
             {
@@ -1116,12 +1265,19 @@ namespace GameAnalyticsSDK
                 }
             }
             return "";
-#endif
         }
 
+#if UNITY_6000_5_OR_NEWER
+        public static void HierarchyWindowCallback(EntityId instanceID, Rect selectionRect)
+#else
         public static void HierarchyWindowCallback(int instanceID, Rect selectionRect)
+#endif
         {
+#if UNITY_6000_5_OR_NEWER
+            GameObject go = (GameObject)EditorUtility.EntityIdToObject(instanceID);
+#else
             GameObject go = (GameObject)EditorUtility.InstanceIDToObject(instanceID);
+#endif
             if(go != null && go.GetComponent<GameAnalytics>() != null)
             {
                 float addX = 0;

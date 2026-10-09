@@ -32,8 +32,8 @@ public class GameController : MonoBehaviour
     public Skin equippedSkin;
 
     bool gameStarted;
-    [SerializeField] int startVelocity { get { return equippedSkin != null ? equippedSkin.startVelocity : 0; } }
-    [SerializeField] int maxVelocity { get { return equippedSkin != null ? equippedSkin.maxVelocity : 0; } }
+    int startVelocity { get { return equippedSkin != null ? equippedSkin.startVelocity : 0; } }
+    int maxVelocity { get { return equippedSkin != null ? equippedSkin.maxVelocity : 0; } }
     public static int globalVelocity;
     public Queue<GameObject> entitiesToMoveQueue = new Queue<GameObject>();
     private List<GameObject> entitiesToMove = new List<GameObject>();

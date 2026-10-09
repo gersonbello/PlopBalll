@@ -72,6 +72,15 @@ namespace GameAnalyticsSDK.Wrapper
         [DllImport ("__Internal")]
         private static extern void addErrorEvent(int severity, string message, string fields, bool mergeFields);
 
+        [DllImport("__Internal")]
+        private static extern void addAdEventWithDuration(int adAction, int adType, string adSdkName, string adPlacement, long duration, string fields, bool mergeFields);
+
+        [DllImport("__Internal")]
+        private static extern void addAdEventWithReason(int adAction, int adType, string adSdkName, string adPlacement, int noAdReason, string fields, bool mergeFields);
+
+        [DllImport("__Internal")]
+        private static extern void addAdEvent(int adAction, int adType, string adSdkName, string adPlacement, string fields, bool mergeFields);
+
         [DllImport ("__Internal")]
         private static extern void setEnabledInfoLog(bool enabled);
 
@@ -105,6 +114,18 @@ namespace GameAnalyticsSDK.Wrapper
         [DllImport ("__Internal")]
         private static extern string getABTestingVariantId();
 
+        [DllImport ("__Internal")]
+        private static extern void enableHealthEvent(bool flag);
+
+        [DllImport ("__Internal")]
+        private static extern string getExtUserId();
+
+        [DllImport ("__Internal")]
+        private static extern void setExtUserId(string extUserId);
+
+        [DllImport ("__Internal")]
+        private static extern string getRemoteConfigsValueAsJSON(string key, string defaultValue);
+
         private static void gameAnalyticsStartSession()
         {
             startSession();
@@ -120,10 +141,8 @@ namespace GameAnalyticsSDK.Wrapper
             // not supported
         }
 
-        public static string getUserId()
-        {
-            return "";
-        }
+        [DllImport ("__Internal")]
+        public static extern string getUserId();
 
 #endif
     }

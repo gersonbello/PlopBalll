@@ -5,7 +5,13 @@
 //  Copyright (c) GameAnalytics. All rights reserved.
 //
 
-#import "GameAnalytics.h"
+#if __has_include(<GameAnalytics/GameAnalytics.h>)
+#import <GameAnalytics/GameAnalytics.h>
+#import <GameAnalytics/GameAnalyticsWrapper.h>
+#else
+#import <GameAnalyticsTVOS/GameAnalytics.h>
+#import <GameAnalyticsTVOS/GameAnalyticsWrapper.h>
+#endif
 
 @interface GARemoteConfigsUnityDelegate : NSObject<GARemoteConfigsDelegate>
 {
@@ -100,6 +106,11 @@ void configureUserId(const char *userId) {
     [GameAnalytics configureUserId:userIdString];
 }
 
+void configureExternalUserId(const char *userId) {
+    NSString *userIdString = userId != NULL ? [NSString stringWithUTF8String:userId] : nil;
+    [GameAnalytics configureExternalUserId:userIdString];
+}
+
 void configureAutoDetectAppVersion(BOOL flag) {
     [GameAnalytics configureAutoDetectAppVersion:flag];
 }
@@ -156,6 +167,29 @@ void addBusinessEventAndAutoFetchReceipt(const char *currency, int amount, const
                                          itemId:itemIdString
                                        cartType:cartTypeString
                                autoFetchReceipt:TRUE
+                                   customFields:fields_dict
+                                    mergeFields:mergeFields];
+}
+
+void addBusinessEventWithTransactionId(const char *currency, int amount, const char *itemType, const char *itemId, const char *cartType, const char *transactionId, const char *fields, BOOL mergeFields) {
+    NSString *currencyString = currency != NULL ? [NSString stringWithUTF8String:currency] : nil;
+    NSInteger amountInteger = (NSInteger)amount;
+    NSString *itemTypeString = itemType != NULL ? [NSString stringWithUTF8String:itemType] : nil;
+    NSString *itemIdString = itemId != NULL ? [NSString stringWithUTF8String:itemId] : nil;
+    NSString *cartTypeString = cartType != NULL ? [NSString stringWithUTF8String:cartType] : nil;
+    NSString *transactionIdString = transactionId != NULL ? [NSString stringWithUTF8String:transactionId] : nil;
+    NSString *fieldsString = fields != NULL ? [NSString stringWithUTF8String:fields] : nil;
+    NSDictionary *fields_dict = nil;
+    if (fieldsString) {
+        fields_dict = [NSJSONSerialization JSONObjectWithData:[fieldsString dataUsingEncoding:NSUTF8StringEncoding] options:kNilOptions error:nil];
+    }
+
+    [GameAnalytics addBusinessEventWithCurrency:currencyString
+                                         amount:amountInteger
+                                       itemType:itemTypeString
+                                         itemId:itemIdString
+                                       cartType:cartTypeString
+                                  transactionId:transactionIdString
                                    customFields:fields_dict
                                     mergeFields:mergeFields];
 }
@@ -347,6 +381,10 @@ void setEventSubmission(BOOL flag) {
     [GameAnalytics setEnabledEventSubmission:flag];
 }
 
+void setEventSubmissionWithCaching(BOOL flag, BOOL doCache) {
+    [GameAnalytics setEnabledEventSubmission:flag doCacheLocally:doCache];
+}
+
 void gameAnalyticsStartSession() {
     [GameAnalytics startSession];
 }
@@ -407,6 +445,11 @@ char* getRemoteConfigsContentAsString() {
     return cStringCopy([result UTF8String]);
 }
 
+char* getRemoteConfigsContentAsJSON() {
+    NSString *result = [GameAnalytics getRemoteConfigsContentAsJSON];
+    return cStringCopy([result UTF8String]);
+}
+
 char* getABTestingId() {
     NSString *result = [GameAnalytics getABTestingId];
     return cStringCopy([result UTF8String]);
@@ -414,6 +457,11 @@ char* getABTestingId() {
 
 char* getUserId() {
     NSString *result = [GameAnalytics getUserId];
+    return cStringCopy([result UTF8String]);
+}
+
+char* getExternalUserId() {
+    NSString *result = [GameAnalytics getExternalUserId];
     return cStringCopy([result UTF8String]);
 }
 
@@ -440,4 +488,20 @@ void resumeTimer(const char *key) {
 long stopTimer(const char *key) {
     NSString *keyString = key != NULL ? [NSString stringWithUTF8String:key] : nil;
     return [GameAnalytics stopTimer:keyString];
+}
+
+void enableSDKInitEvent(BOOL flag) {
+    [GameAnalytics enableSDKInitEvent:flag];
+}
+
+void enableFpsHistogram(BOOL flag) {
+    [GameAnalytics enableFpsHistogram:flag];
+}
+
+void enableMemoryHistogram(BOOL flag) {
+    [GameAnalytics enableMemoryHistogram:flag];
+}
+
+void enableHealthHardwareInfo(BOOL flag) {
+    [GameAnalytics enableHealthHardwareInfo:flag];
 }

@@ -13,8 +13,20 @@ namespace GameAnalyticsSDK
 #if gameanalytics_mopub_enabled
         private static readonly AndroidJavaClass MoPubClass = new AndroidJavaClass("com.mopub.unity.MoPubUnityPlugin");
 #endif
+
 #if gameanalytics_topon_enabled
-        private static readonly AndroidJavaClass TopOnClass = new AndroidJavaClass("com.anythink.core.api.ATSDK");
+        // TopOn ships the same SDK under different Java package prefixes depending on the
+        // plugin build the developer downloaded (thinkup = TPN 6.6+, secmtp = TPN 6.5,
+        // anythink = pre-TPN). They all expose a static getSDKVersionName() returning
+        // "UA_<version>", so resolve whichever one is actually in the app.
+        private static readonly string[] TopOnClassNames = new string[]
+        {
+            "com.thinkup.core.api.TUSDK",
+            "com.secmtp.sdk.core.api.ATSDK",
+            "com.anythink.core.api.ATSDK",
+        };
+        private static AndroidJavaClass topOnClass;
+        private static bool topOnClassResolved;
 #endif
 #if gameanalytics_hyperbid_enabled
         private static readonly AndroidJavaClass HyperBidClass = new AndroidJavaClass("com.hyperbid.core.api.HBSDK");
@@ -51,10 +63,14 @@ namespace GameAnalyticsSDK
 
         private static void IronSourceImpressionHandler(string json)
         {
-#if gameanalytics_ironsource_enabled
+#if gameanalytics_levelplay_enabled || gameanalytics_ironsource_enabled
 
-            // Remove potential label/tag from version number
+#if gameanalytics_levelplay_enabled
+            string v = Unity.Services.LevelPlay.LevelPlay.PluginVersion;
+#else
             string v = IronSource.pluginVersion();
+#endif
+            // Remove potential label/tag from version number
             int index = v.IndexOf("-");
             if(index >= 0)
             {
@@ -73,9 +89,44 @@ namespace GameAnalyticsSDK
         private static void TopOnImpressionHandler(string json)
         {
 #if gameanalytics_topon_enabled
-            GA.CallStatic("addImpressionTopOnEvent", TopOnClass.CallStatic<string>("getSDKVersionName").Replace("UA_", ""), json);
+            AndroidJavaClass topOn = GetTopOnClass();
+            if(topOn == null)
+            {
+                return;
+            }
+
+            GA.CallStatic("addImpressionTopOnEvent", topOn.CallStatic<string>("getSDKVersionName").Replace("UA_", ""), json);
 #endif
         }
+
+#if gameanalytics_topon_enabled
+        private static AndroidJavaClass GetTopOnClass()
+        {
+            if(!topOnClassResolved)
+            {
+                topOnClassResolved = true;
+                foreach(string className in TopOnClassNames)
+                {
+                    try
+                    {
+                        topOnClass = new AndroidJavaClass(className);
+                        break;
+                    }
+                    catch(System.Exception)
+                    {
+                        // Not this flavour of the TopOn SDK, try the next one.
+                    }
+                }
+
+                if(topOnClass == null)
+                {
+                    Debug.LogWarning("GameAnalytics: TopOn impressions will not be sent, none of the known TopOn SDK classes were found (" + string.Join(", ", TopOnClassNames) + ")");
+                }
+            }
+
+            return topOnClass;
+        }
+#endif
 
         private static void subscribeMaxImpressions()
         {
@@ -136,6 +187,11 @@ namespace GameAnalyticsSDK
         }
 
         private static void subscribeAdMobImpressions(string adUnitId, GoogleMobileAds.Api.RewardedInterstitialAd ad)
+        {
+            GAAdMobIntegration.ListenForImpressions(adUnitId, ad, AdMobImpressionHandler);
+        }
+
+        private static void subscribeAdMobImpressions(string adUnitId, GoogleMobileAds.Api.AppOpenAd ad)
         {
             GAAdMobIntegration.ListenForImpressions(adUnitId, ad, AdMobImpressionHandler);
         }
@@ -209,10 +265,14 @@ namespace GameAnalyticsSDK
         {
             if(!string.IsNullOrEmpty(json))
             {
-#if gameanalytics_ironsource_enabled
+#if gameanalytics_levelplay_enabled || gameanalytics_ironsource_enabled
 
-                // Remove potential label/tag from version number
+#if gameanalytics_levelplay_enabled
+                string v = Unity.Services.LevelPlay.LevelPlay.PluginVersion;
+#else
                 string v = IronSource.pluginVersion();
+#endif
+                // Remove potential label/tag from version number
                 int index = v.IndexOf("-");
                 if(index >= 0)
                 {
@@ -305,6 +365,11 @@ namespace GameAnalyticsSDK
             GAAdMobIntegration.ListenForImpressions(adUnitId, ad, AdMobImpressionHandler);
         }
 
+        private static void subscribeAdMobImpressions(string adUnitId, GoogleMobileAds.Api.AppOpenAd ad)
+        {
+            GAAdMobIntegration.ListenForImpressions(adUnitId, ad, AdMobImpressionHandler);
+        }
+
         private static void AdMobImpressionHandler(string sdkVersion, string json)
         {
             if(!string.IsNullOrEmpty(json))
@@ -336,7 +401,7 @@ namespace GameAnalyticsSDK
 #endif
         }
 
-        // ----------------------- IRON SOURCE AD IMPRESSIONS ---------------------- //
+        // ----------------------- IRON SOURCE / LEVELPLAY AD IMPRESSIONS ---------------------- //
         public static void SubscribeIronSourceImpressions()
         {
 #if UNITY_EDITOR
@@ -344,6 +409,11 @@ namespace GameAnalyticsSDK
 #elif UNITY_IOS || UNITY_ANDROID
             subscribeIronSourceImpressions();
 #endif
+        }
+
+        public static void SubscribeLevelPlayImpressions()
+        {
+            SubscribeIronSourceImpressions();
         }
 
         // ----------------------- TOPON AD IMPRESSIONS ---------------------- //
@@ -370,7 +440,7 @@ namespace GameAnalyticsSDK
         public static void SubscribeAequusImpressions()
         {
 #if UNITY_EDITOR
-            Debug.Log("subscribeAequusImpressions()");
+            Debug.Log("subscribeAequusImpressions()"); 
 #elif UNITY_IOS || UNITY_ANDROID
             subscribeAequusImpressions();
 #endif
@@ -422,6 +492,15 @@ namespace GameAnalyticsSDK
 #elif UNITY_IOS || UNITY_ANDROID
             subscribeAdMobImpressions(adUnitId, rewardedInterstitialAd);
 #endif
+        }
+
+        public static void SubscribeAdMobImpressions(string adUnitId, GoogleMobileAds.Api.AppOpenAd appOpenAd)
+        {
+            #if UNITY_EDITOR
+                        Debug.Log("subscribeAdMobImpressions(adUnitId, appOpenAd)");
+            #elif UNITY_IOS || UNITY_ANDROID
+                        subscribeAdMobImpressions(adUnitId, appOpenAd);
+            #endif
         }
 #endif
     }

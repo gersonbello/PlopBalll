@@ -16,9 +16,6 @@ namespace GameAnalyticsSDK.Wrapper
 #if gameanalytics_mopub_enabled
         private static readonly AndroidJavaClass MoPubClass = new AndroidJavaClass("com.mopub.unity.MoPubUnityPlugin");
 #endif
-#if gameanalytics_topon_enabled
-        private static readonly AndroidJavaClass TopOnClass = new AndroidJavaClass("com.anythink.core.api.ATSDK");
-#endif
 
         private static void configureAvailableCustomDimensions01(string list)
         {
@@ -144,6 +141,14 @@ namespace GameAnalyticsSDK.Wrapper
             GA.CallStatic("addBusinessEvent", currency, amount, itemType, itemId, cartType, receipt, store, signature, fields, mergeFields);
         }
 
+        private static void addBusinessEventWithReceiptInfo(string currency, int amount, string itemType, string itemId, string cartType, string store, string productId, string purchaseToken, string fields, bool mergeFields)
+        {
+            using (var receiptInfo = new AndroidJavaObject("com.gameanalytics.sdk.events.ReceiptInfo", store, productId, purchaseToken))
+            {
+                GA.CallStatic("addBusinessEvent", currency, amount, itemType, itemId, cartType, receiptInfo, fields, mergeFields);
+            }
+        }
+
         private static void addResourceEvent(int flowType, string currency, float amount, string itemType, string itemId, string fields, bool mergeFields)
         {
             GA.CallStatic("addResourceEvent", flowType, currency, amount, itemType, itemId, fields, mergeFields);
@@ -209,6 +214,11 @@ namespace GameAnalyticsSDK.Wrapper
             GA.CallStatic("setEnabledEventSubmission", enabled);
         }
 
+        private static void setEventSubmission(bool enabled, bool doCacheLocally)
+        {
+            GA.CallStatic("setEnabledEventSubmission", enabled, doCacheLocally);
+        }
+
         private static void gameAnalyticsStartSession()
         {
             GA.CallStatic("startSession");
@@ -244,6 +254,16 @@ namespace GameAnalyticsSDK.Wrapper
             return GA.CallStatic<string>("getABTestingVariantId");
         }
 
+        private static string getExternalUserId()
+        {
+            return GA.CallStatic<string>("getExternalUserId");
+        }
+
+        private static void configureExternalUserId(string externalUserId)
+        {
+            GA.CallStatic("configureExternalUserId", externalUserId);
+        }
+
         private static void startTimer(string key)
         {
             GA.CallStatic("startTimer", key);
@@ -272,6 +292,26 @@ namespace GameAnalyticsSDK.Wrapper
         public static void enableGAIDTracking(bool flag)
         {
             GA.CallStatic("setGAIDTracking", flag);
+        }
+
+        public static void enableSDKInitEvent(bool flag)
+        {
+            GA.CallStatic("enableSDKInitEvent", flag);
+        }
+
+        public static void enableFpsHistogram(bool flag)
+        {
+            GA.CallStatic("enableFpsHistogram", flag);
+        }
+
+        public static void enableMemoryHistogram(bool flag)
+        {
+            GA.CallStatic("enableMemoryHistogram", flag);
+        }
+
+        public static void enableHealthHardwareInfo(bool flag)
+        {
+            GA.CallStatic("enableHealthHardwareInfo", flag);
         }
 #endif
     }
